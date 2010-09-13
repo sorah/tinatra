@@ -13,15 +13,27 @@ end
 class Tinatra
   include Singleton
 
-  def method_missing(name, *args)
-    return self.instance.__send__(name, *args) if self.instance.respond_to?(name)
-    super name, *args
+  def initialize
+    @config = {}
   end
+
+  def set(a,b)
+    @config[a]=b
+  end
+
+  def self.method_missing(name, *args)
+    Tinatra.instance.__send__(name, *args)
+  end
+  attr_reader :config
+
+  module Helpers
+  end
+  include Helpers
 end
 
 module Kernel
   def set(*args)
-    Tinatra.set(*args)
+    Tinatra.instance.set(*args)
   end
 end
 
