@@ -1,0 +1,10 @@
+# Tinatra - Ruby powered DSL, which a designed for making twitter bots.
+
+Tinatra is a DSL for making twitter bots. It's like Sinatra. とぃなとら.
+
+## Feature
+
+* Easy to make twitter bot
+* Run in cron
+* Many actions (always,mention,direct\_message,followed,timeline,...)
+* Automatic follow return/remove return
