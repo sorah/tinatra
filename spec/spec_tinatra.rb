@@ -80,7 +80,7 @@ def dummy_reply(i,t)
 
 end
 
-def dummy_direct(,text)
+def dummy_direct(text)
   {:recipient_screen_name=>"tinatra", :recipient=>{},
    :created_at=>"Mon Sep 13 07:11:39 +0000 2010", :recipient_id=>2, :sender=>{},
    :sender_id=>1, :id=>$tinatra_spec_tweet_id, :sender_screen_name=>"foo", :text=>text}
@@ -123,7 +123,7 @@ describe "Tinatra" do
       a = lambda{|t|r = t[:text]}
       Tinatra.add_action(:timeline, &a)
       Tinatra.run
-      Dummytter.dummy.timeline << dummy_tweet("hi")
+      Dummytter.dummy[:home_timeline] << dummy_tweet("hi")
       Tinatra.run
       r.should == "hi"
     end
@@ -136,7 +136,7 @@ describe "Tinatra" do
       a = lambda{|t,r|r[0]=t[:id]; r[1]=r[:id]}
       Tinatra.add_action(:mention, &a)
       Tinatra.run
-      Dummytter.dummy.mention << mention
+      Dummytter.dummy[:replies] << mention
       Tinatra.run
       r[0].should == mention[:id]
       r[1].should == target[:id]
@@ -148,7 +148,7 @@ describe "Tinatra" do
       a = lambda{|d|r = d[:id]}
       Tinatra.add_action(:direct_message, &a)
       Tinatra.run
-      Dummytter.dummy.direct_message << dm
+      Dummytter.dummy[:direct_messages] << dm
       Tinatra.run
       r.should == dm[:id]
     end
@@ -162,17 +162,27 @@ describe "Tinatra" do
     end
 
     it "followed calls when followed by user" do
+      r = nil
+      a = lambda{|u|r = u[:id]}
+      Tinatra.run
+      Dummytter.dummy[:followers_ids] << 5
+      Tinatra.run
+      a.should == 5
     end
 
     it "removed calls when removed by user" do
+      r = nil
+      a = lambda{|u|r = u[:id]}
+      Tinatra.run
+      Dummytter.dummy[:followers_ids].delete 5
+      Tinatra.run
+      a.should == 5
     end
   end
 
   describe "config" do
-    it "autofollow returns follow automatically" do
-    end
+    it "autofollow returns follow automatically"
 
-    it "autoremove returns follow automatically" do
-    end
+    it "autoremove returns follow automatically"
   end
 end
