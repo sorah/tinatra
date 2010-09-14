@@ -41,6 +41,8 @@ Tinatra is a DSL for making twitter bots. It's like Sinatra. トゥィナトラ.
 
     always do
       # Always run
+      p api.class #=> OAuthRubytter
+      api.update("hi")
     end
 
 ### Setup
@@ -55,6 +57,14 @@ Tinatra is a DSL for making twitter bots. It's like Sinatra. トゥィナトラ.
 
     Authorizing is done.
     $ ruby a.rb --db=/path/to/db
+
+### Database
+
+    $ ruby a.rb --db=...
+
+    db "..."
+
+    set :db, "..."
 
 ## License
 
