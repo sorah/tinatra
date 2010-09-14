@@ -108,6 +108,15 @@ describe "Tinatra" do
       Tinatra.run
       r.should == Dummytter
     end
+
+    it "add by method" do
+      r = false
+      always do
+        r = true
+      end
+      Tinatra.run
+      r.should be_true
+    end
   end
 
   describe "config" do

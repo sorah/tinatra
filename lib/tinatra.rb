@@ -186,7 +186,7 @@ Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
   end
 
   [:mention,:timeline,:direct_message,:always,:followed,:removed].each do |act|
-    eval "def #{act}(&block); add_action(:#{act},&block); end"
+    eval "def #{act}(&block); add_action(:#{act},block); end"
   end
 
   def self.method_missing(name, *args)
@@ -250,7 +250,7 @@ module Kernel
     Tinatra.instance.set(:db,path)
   end
   [:mention,:timeline,:direct_message,:always,:followed,:removed].each do |act|
-    eval "def #{act}(&block); Tinatra.#{act}(&block); end"
+    eval "def #{act}(&block); Tinatra.instance.#{act}(&block); end"
   end
 
   def api
