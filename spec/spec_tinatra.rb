@@ -3,16 +3,11 @@ $:.unshift "#{File.dirname(__FILE__)}"
 require "tinatra"
 require "helper_dummytter"
 
-$tinatra_spec_tweet_id = 0
-
-def dummy_direct(text)
-  {:recipient_screen_name=>"tinatra", :recipient=>{},
-   :created_at=>"Mon Sep 13 07:11:39 +0000 2010", :recipient_id=>2, :sender=>{},
-   :sender_id=>1, :id=>$tinatra_spec_tweet_id, :sender_screen_name=>"foo", :text=>text}
-end
+#Dummytter.dummy[:followers_ids] = 100.times.map{|i|i}
 
 describe "Tinatra" do
   before do
+    Dummytter.dummy[:verify_credentials] = {:user => {:id => 2, :screen_name => "tinatra"}}
     Tinatra.set :spec, true
     Tinatra.set :db, :memory
     Tinatra.set :rubytter, Dummytter
@@ -26,7 +21,7 @@ describe "Tinatra" do
     Tinatra.reset
     a = nil
     l = lambda{ a = :twitra}
-    Tinatra.add_action(:foo, &l)
+    Tinatra.add_action(:foo, l)
     Tinatra.call_action(:foo)
     a.should == :twitra
   end
@@ -35,7 +30,7 @@ describe "Tinatra" do
     Tinatra.reset
     a = nil
     l = lambda{|*x| a = x}
-    Tinatra.add_action(:foo, &l)
+    Tinatra.add_action(:foo, l)
     Tinatra.call_action(:foo, :bar)
     a.should == [:bar]
     Tinatra.call_action(:foo, :bar, :hoge)
@@ -45,33 +40,33 @@ describe "Tinatra" do
   describe "action" do
     it "timeline calls when detect new tweet in timeline" do
       r = nil
-      a = lambda{|t|r = t[:text]}
-      Tinatra.add_action(:timeline, &a)
+      tweet = dummy_tweet("hi")
+      a = lambda{|t|r = t[:id]}
+      Tinatra.add_action(:timeline, a)
       Tinatra.run
-      Dummytter.dummy[:home_timeline] << dummy_tweet("hi")
+      Dummytter.dummy[:home_timeline] << tweet
       Tinatra.run
-      r.should == "hi"
+      r.should == tweet[:id]
     end
 
     it "mention calls when detect new tweet in mention" do
-      r = []
+      r = nil
       target = dummy_tweet("hi")
       mention = dummy_reply(target[:id],"hi!!")
-      Dummytter.dummy.timeline << target
-      a = lambda{|t,r|r[0]=t[:id]; r[1]=r[:id]}
-      Tinatra.add_action(:mention, &a)
+      Dummytter.dummy[:home_timeline] << target
+      a = lambda{|t|r=t[:id]}
+      Tinatra.add_action(:mention, a)
       Tinatra.run
       Dummytter.dummy[:replies] << mention
       Tinatra.run
-      r[0].should == mention[:id]
-      r[1].should == target[:id]
+      r.should == mention[:id]
     end
 
     it "direct_message calls when received new direct message" do
       dm = dummy_direct("hello")
       r = nil
       a = lambda{|d|r = d[:id]}
-      Tinatra.add_action(:direct_message, &a)
+      Tinatra.add_action(:direct_message, a)
       Tinatra.run
       Dummytter.dummy[:direct_messages] << dm
       Tinatra.run
@@ -81,7 +76,7 @@ describe "Tinatra" do
     it "always calls always" do
       r = false
       a = lambda{r = true}
-      Tinatra.add_action(:always, &a)
+      Tinatra.add_action(:always, a)
       Tinatra.run
       r.should be_true
     end
@@ -90,18 +85,20 @@ describe "Tinatra" do
       r = nil
       a = lambda{|u|r = u[:id]}
       Tinatra.run
-      Dummytter.dummy[:followers_ids] << 5
+      Tinatra.add_action(:followed,a)
+      Dummytter.dummy[:followers_ids] << 10000
       Tinatra.run
-      a.should == 5
+      r.should == 10000
     end
 
     it "removed calls when removed by user" do
       r = nil
       a = lambda{|u|r = u[:id]}
       Tinatra.run
-      Dummytter.dummy[:followers_ids].delete 5
+      Tinatra.add_action(:removed,a)
+      Dummytter.dummy[:followers_ids].delete 10000
       Tinatra.run
-      a.should == 5
+      r.should == 10000
     end
   end
 

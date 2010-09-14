@@ -1,15 +1,21 @@
 class Dummytter
-  def initialize(*args)
-    @dummy = {:replies => [], :home_timeline => [], :direct_messages => [],
-              :followers_ids => [], :friends_ids => []}
+  @@dummy = {:replies => [], :home_timeline => [], :direct_messages => [],
+             :followers_ids => [], :friends_ids => []}
+  def method_missing(name,*args)
+    @@dummy[name] ||= []
+    @@dummy[name].dup
   end
 
-  def method_missing(name,*args)
-    @dummy[name] ||= []
-    @dummy[name]
+  def user(id)
+    {:id=>id}
   end
-  attr_accessor :dummy
+
+  def self.dummy
+    @@dummy
+  end
 end
+
+$tinatra_spec_tweet_id = 0
 
 def dummy_user(name)
   $tinatra_spec_tweet_id += 1
@@ -84,6 +90,12 @@ def dummy_reply(i,t)
            :utc_offset=>32400, :profile_background_color=>"FFFFFF"},
    :geo=>nil, :id=>$tinatra_spec_tweet_id, :text=>t}
 
+end
+
+def dummy_direct(text)
+  {:recipient_screen_name=>"tinatra", :recipient=>{},
+   :created_at=>"Mon Sep 13 07:11:39 +0000 2010", :recipient_id=>2, :sender=>{},
+   :sender_id=>1, :id=>$tinatra_spec_tweet_id, :sender_screen_name=>"foo", :text=>text}
 end
 
 
