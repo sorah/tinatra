@@ -76,7 +76,10 @@ class Tinatra
       end
     end
 
-    authorize if init
+    if init
+      authorize
+      exit
+    end
     if help
       puts <<-EOH
 Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
