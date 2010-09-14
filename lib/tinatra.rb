@@ -3,6 +3,7 @@ require 'oauth'
 require 'rubytter'
 require 'pstore'
 require 'singleton'
+require 'highline'
 
 class Hash
   def transaction
@@ -10,7 +11,46 @@ class Hash
   end
 end
 
+#oauth-patch.rb http://d.hatena.ne.jp/shibason/20090802/1249204953
+if RUBY_VERSION >= '1.9.0'
+  module OAuth
+    module Helper
+      def escape(value)
+        begin
+          URI::escape(value.to_s, OAuth::RESERVED_CHARACTERS)
+        rescue ArgumentError
+          URI::escape(
+            value.to_s.force_encoding(Encoding::UTF_8),
+            OAuth::RESERVED_CHARACTERS
+          )
+        end
+      end
+    end
+  end
+
+  module HMAC
+    class Base
+      def set_key(key)
+        key = @algorithm.digest(key) if key.size > @block_size
+        key_xor_ipad = Array.new(@block_size, 0x36)
+        key_xor_opad = Array.new(@block_size, 0x5c)
+        key.bytes.each_with_index do |value, index|
+          key_xor_ipad[index] ^= value
+          key_xor_opad[index] ^= value
+        end
+        @key_xor_ipad = key_xor_ipad.pack('c*')
+        @key_xor_opad = key_xor_opad.pack('c*')
+        @md = @algorithm.new
+        @initialized = true
+      end
+    end
+  end
+end
+
+
+
 class Tinatra
+  API_BASE = 'http://api.twitter.com/'
   include Singleton
 
   def initialize
@@ -18,6 +58,72 @@ class Tinatra
     @actions = {}
     @db = nil
     @t = nil
+  end
+
+  def parse_option
+    init = false
+    help = false
+    ARGV.each do |a|
+      case a
+      when "--init"
+        init = true
+        help = false
+      when /--db=(.+)/
+        set :db, $1
+      when "--help"
+        help = true
+        init = false
+      end
+    end
+
+    authorize if init
+    if help
+      puts <<-EOH
+Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
+
+  --db   -- set a path to database file.
+  --init -- authorize an account
+  --help -- show this message
+      EOH
+      exit
+    end
+  end
+
+  def authorize
+    puts "------------ AUTHORIZING ------------"
+    init_db
+    @db.transaction do |d|
+      if d[:consumer]
+        puts "You're already setted consumer key/secret."
+        cons_again = Highline.new.agree("Input consumer key/secret again? ")
+      else
+        cons_again = true
+      end
+
+      if cons_again
+        cons = []
+        cons << HighLine.new.ask("Input your consumer key: ")
+        cons << HighLine.new.ask("Input your consumer secret: ")
+      end
+      d[:consumer] = cons
+
+      puts
+
+      c = OAuth::Consumer.new(cons[0],cons[1], :site => API_BASE)
+      request_token = c.get_request_token
+      puts "Access This URL and press 'Allow' in account for tinatra => #{request_token.authorize_url}"
+      pin = HighLine.new.ask('Input key shown by twitter: ')
+      access_token = request_token.get_access_token(
+        :oauth_verifier => pin
+      )
+      d[:token] = [access_token.token,access_token.secret]
+
+      @t = @config[:rubytter].new(access_token)
+      d[:self] = @t.verify_credentials
+
+      puts
+      puts "Authorizing is done."
+    end
   end
 
   def reset
@@ -36,7 +142,8 @@ class Tinatra
   def call_action(event, *args)
     @actions[event] ||= []
     @actions[event].each do |a|
-      a.call(*args)
+      #a.yield(*args)
+      instance_eval(&a)
     end
   end
 
@@ -74,6 +181,14 @@ class Tinatra
     end
   end
 
+  def twitter
+    @t
+  end
+
+  [:mention,:timeline,:direct_message,:always,:followed,:removed].each do |act|
+    eval "def #{act}(&block); add_action(:#{act},&block); end"
+  end
+
   def self.method_missing(name, *args)
     Tinatra.instance.__send__(name, *args)
   end
@@ -90,13 +205,20 @@ class Tinatra
     return @t if @t
     init_db
     @db.transaction do |d|
-      if !@config[:spec] && !d[:token].nil? \
-                         && d[:token].empty?
-        # TODO: Need authentication..
+      if !@config[:spec] &&(!d[:token].nil?     \
+                         ||  d[:token].empty?   \
+                         || !d[:consumer].nil?  \
+                         ||  d[:consumer].empty?)
+        abort "Run #{File.basename($0)} --init first."
       end
-      access_token = nil # NOTE: Fix this
+      access_token = nil
+      if @config[:spec]
+        d[:self] = @config[:rubytter].new.verify_credentials
+      else
+        cons = OAuth::Consumer.new(d[:consumer][0],d[:consumer][1], :site => API_BASE)
+        access_token = OAuth::AccessToken.new(cons, d[:token][0], d[:token][1])
+      end
       @t = @config[:rubytter].new(access_token)
-      d[:self] = @t.verify_credentials
     end
   end
 
@@ -127,8 +249,14 @@ module Kernel
   def db(path)
     Tinatra.instance.set(:db,path)
   end
+  [:mention,:timeline,:direct_message,:always,:followed,:removed].each do |act|
+    eval "def #{act}(&block); Tinatra.#{act}(&block); end"
+  end
 end
 
 at_exit do
-  Tinatra.start if $!.nil?
+ if $!.nil? && !Tinatra.config[:spec]
+   Tinatra.parse_option
+   Tinatra.start
+ end
 end

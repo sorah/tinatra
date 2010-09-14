@@ -100,6 +100,14 @@ describe "Tinatra" do
       Tinatra.run
       r.should == 10000
     end
+
+    it "looks rubytter by twitter method" do
+      r = nil
+      a = lambda{r = twitter.class}
+      Tinatra.add_action(:always, a)
+      Tinatra.run
+      r.should == Dummytter
+    end
   end
 
   describe "config" do
