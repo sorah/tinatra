@@ -101,9 +101,9 @@ describe "Tinatra" do
       r.should == 10000
     end
 
-    it "looks rubytter by twitter method" do
+    it "looks rubytter by api method" do
       r = nil
-      a = lambda{r = twitter.class}
+      a = lambda{r = api.class}
       Tinatra.add_action(:always, a)
       Tinatra.run
       r.should == Dummytter

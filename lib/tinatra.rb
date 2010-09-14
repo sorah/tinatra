@@ -142,8 +142,7 @@ Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
   def call_action(event, *args)
     @actions[event] ||= []
     @actions[event].each do |a|
-      #a.yield(*args)
-      instance_eval(&a)
+      a.yield(*args)
     end
   end
 
@@ -181,7 +180,8 @@ Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
     end
   end
 
-  def twitter
+  def api
+    init_twit unless @t
     @t
   end
 
@@ -251,6 +251,10 @@ module Kernel
   end
   [:mention,:timeline,:direct_message,:always,:followed,:removed].each do |act|
     eval "def #{act}(&block); Tinatra.#{act}(&block); end"
+  end
+
+  def api
+    Tinatra.instance.api
   end
 end
 
