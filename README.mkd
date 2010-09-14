@@ -13,6 +13,8 @@ Tinatra is a DSL for making twitter bots. It's like Sinatra. トゥィナトラ.
 
     gem install tinatra
 
+<http://rubygems.org/gems/tinatra>
+
 ## Usage
 
     require 'tinatra'
