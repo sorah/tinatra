@@ -95,7 +95,7 @@ Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
     @db.transaction do |d|
       if d[:consumer]
         puts "You're already setted consumer key/secret."
-        cons_again = Highline.new.agree("Input consumer key/secret again? ")
+        cons_again = HighLine.new.agree("Input consumer key/secret again? ")
       else
         cons_again = true
       end
@@ -104,22 +104,21 @@ Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
         cons = []
         cons << HighLine.new.ask("Input your consumer key: ")
         cons << HighLine.new.ask("Input your consumer secret: ")
+        d[:consumer] = OAuth::Consumer.new(cons[0],cons[1], :site => API_BASE)
       end
-      d[:consumer] = cons
 
       puts
 
-      c = OAuth::Consumer.new(cons[0],cons[1], :site => API_BASE)
-      request_token = c.get_request_token
+      request_token = d[:consumer].get_request_token
       puts "Access This URL and press 'Allow' in account for tinatra => #{request_token.authorize_url}"
       pin = HighLine.new.ask('Input key shown by twitter: ')
       access_token = request_token.get_access_token(
         :oauth_verifier => pin
       )
-      d[:token] = [access_token.token,access_token.secret]
+      d[:token] = access_token#[access_token.token.dup,access_token.secret.dup]
 
       @t = @config[:rubytter].new(access_token)
-      d[:self] = @t.verify_credentials
+      d[:self] = eval(@t.verify_credentials.inspect)
 
       puts
       puts "Authorizing is done."
@@ -160,6 +159,7 @@ Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
           (r - d[act[0]]).each do |new|
             call_action(act[0],new)
           end
+          d[act[0]] = eval(r.inspect)
         end
       end
     end
@@ -175,7 +175,7 @@ Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
             end
           end
         end
-        d[:follower] = f
+        d[:follower] = eval(f.inspect)
       end
     end
   end
@@ -205,20 +205,14 @@ Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
     return @t if @t
     init_db
     @db.transaction do |d|
-      if !@config[:spec] &&(!d[:token].nil?     \
-                         ||  d[:token].empty?   \
-                         || !d[:consumer].nil?  \
-                         ||  d[:consumer].empty?)
-        abort "Run #{File.basename($0)} --init first."
+      if d[:consumer].nil? || d[:token].nil?
+        abort "Run #{File.basename($0)} --init first." unless @config[:spec]
       end
       access_token = nil
       if @config[:spec]
         d[:self] = @config[:rubytter].new.verify_credentials
-      else
-        cons = OAuth::Consumer.new(d[:consumer][0],d[:consumer][1], :site => API_BASE)
-        access_token = OAuth::AccessToken.new(cons, d[:token][0], d[:token][1])
       end
-      @t = @config[:rubytter].new(access_token)
+      @t = @config[:rubytter].new(d[:token])
     end
   end
 
@@ -227,6 +221,9 @@ Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
     if @config[:db] == :memory
       @db = {}
     else
+      unless @config[:db]
+        abort "You must set a path to db file using --db= or db method."
+      end
       @db = PStore.new(@config[:db])
     end
     make_db
@@ -234,8 +231,11 @@ Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
 
   def make_db
     @db.transaction do |d|
-      [:token,:mention,:direct_message,
-       :timeline,:follower,:following].each{|k|d[k]=[]}
+      unless d[:initialized]
+        d[:initialized] = true
+        [:mention,:direct_message,
+         :timeline,:follower,:following].each{|k|d[k]=[]}
+      end
     end
   end
 
@@ -261,6 +261,6 @@ end
 at_exit do
  if $!.nil? && !Tinatra.config[:spec]
    Tinatra.parse_option
-   Tinatra.start
+   Tinatra.run
  end
 end

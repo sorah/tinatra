@@ -8,5 +8,6 @@ Jeweler::Tasks.new do |gemspec|
   gemspec.authors = ["Shota Fukumori (sora_h)"]
 
   gemspec.add_dependency 'rubytter'
+  gemspec.add_dependency 'highline'
   gemspec.add_dependency 'oauth'
 end
