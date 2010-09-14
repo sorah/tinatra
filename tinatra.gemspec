@@ -22,7 +22,8 @@ Gem::Specification.new do |s|
      "examples/simple.rb",
      "lib/tinatra.rb",
      "spec/helper_dummytter.rb",
-     "spec/spec_tinatra.rb"
+     "spec/spec_tinatra.rb",
+     "tinatra.gemspec"
   ]
   s.homepage = %q{http://github.com/sorah/tinatra}
   s.rdoc_options = ["--charset=UTF-8"]
