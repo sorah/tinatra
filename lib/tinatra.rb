@@ -188,6 +188,11 @@ Usage: #{File.basename($0)} [--db=DATABASE] [--init|--help]
     @t
   end
 
+  def db
+    init_db unless @db
+    @db
+  end
+
   [:mention,:timeline,:direct_message,:always,:followed,:removed].each do |act|
     eval "def #{act}(&block); add_action(:#{act},block); end"
   end
@@ -258,6 +263,10 @@ module Kernel
 
   def api
     Tinatra.instance.api
+  end
+
+  def db
+    Tinatra.instance.db
   end
 end
 
